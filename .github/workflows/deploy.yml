@@ -19,16 +19,16 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
 
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v1
-        with:
-          terraform_version: 1.5.6
-
       - name: Setup Google Cloud CLI
         uses: google-github-actions/setup-gcloud@v0.2.0
         with:
           service_account_key: ${{ secrets.GCP_SA_KEY }}
           project_id: ${{ secrets.GCP_PROJECT_ID }}
+
+      - name: Verify gcloud Authentication
+        run: |
+          gcloud auth list
+          gcloud config list --format 'value(core.project)'
 
       - name: Configure Docker
         run: |
