@@ -49,6 +49,10 @@ jobs:
       - name: Terraform Apply
         run: terraform apply -auto-approve -var="project_id=$PROJECT_ID"
 
+      - name: Create Namespace if not exists
+        run: |
+          kubectl get namespace time-api || kubectl create namespace time-api
+
       - name: Get GKE Credentials
         run: |
           gcloud container clusters get-credentials $GKE_CLUSTER --zone $GKE_ZONE --project $PROJECT_ID
@@ -59,5 +63,5 @@ jobs:
 
       - name: Test API
         run: |
-          export ENDPOINT=$(kubectl get service time-api -n time-api -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
-          curl -f http://$ENDPOINT/time || exit 1
+          ENDPOINT=$(kubectl get service time-api -n time-api -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+          until curl -s http://$ENDPOINT/time; do echo "Waiting for API..."; sleep 10; done

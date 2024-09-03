@@ -32,7 +32,3 @@ variable "subnet_ip_range" {
 }
 
 
-variable "credentials_file" {
-  description = "Path to the GCP service account key file"
-  default     = "C:/Users/HAYWHY/Downloads/terraform-sa-key.json"
-}
