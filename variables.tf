@@ -31,4 +31,9 @@ variable "subnet_ip_range" {
   default     = "10.0.0.0/24"
 }
 
+variable "image" {
+  description = "The name of the Docker image"
+  default     = "time-api"
+}
+
 

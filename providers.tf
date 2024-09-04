@@ -18,8 +18,14 @@ provider "google" {
 
 data "google_client_config" "default" {}
 
+data "google_container_cluster" "my_cluster" {
+  name     = google_container_cluster.primary.name
+  location = google_container_cluster.primary.location
+  project  = var.project_id
+}
+
 provider "kubernetes" {
-  host                   = "https://${google_container_cluster.primary.endpoint}"
+  host                   = "https://${data.google_container_cluster.my_cluster.endpoint}"
   token                  = data.google_client_config.default.access_token
-  cluster_ca_certificate = base64decode(google_container_cluster.primary.master_auth[0].cluster_ca_certificate)
+  cluster_ca_certificate = base64decode(data.google_container_cluster.my_cluster.master_auth[0].cluster_ca_certificate)
 }

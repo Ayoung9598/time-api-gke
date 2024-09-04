@@ -2,6 +2,8 @@ resource "kubernetes_namespace" "time_api" {
   metadata {
     name = "time-api"
   }
+
+  depends_on = [google_container_cluster.primary]
 }
 
 resource "kubernetes_deployment" "time_api" {
@@ -28,32 +30,18 @@ resource "kubernetes_deployment" "time_api" {
 
       spec {
         container {
-          image = "gcr.io/${var.project_id}/time-api:latest"
+          image = "gcr.io/${var.project_id}/${var.image}:latest"
           name  = "time-api"
 
           port {
             container_port = 8080
           }
-
-          resources {
-            limits = {
-              cpu    = "0.5"
-              memory = "512Mi"
-            }
-            requests = {
-              cpu    = "250m"
-              memory = "50Mi"
-            }
-          }
-
-          env {
-            name  = "TZ"
-            value = "UTC"
-          }
         }
       }
     }
   }
+
+  depends_on = [google_container_cluster.primary]
 }
 
 resource "kubernetes_service" "time_api" {
@@ -74,4 +62,6 @@ resource "kubernetes_service" "time_api" {
 
     type = "LoadBalancer"
   }
+
+  depends_on = [google_container_cluster.primary]
 }
