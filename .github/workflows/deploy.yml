@@ -6,6 +6,7 @@ on:
 
 env:
   PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  GOOGLE_CREDENTIALS: ${{ secrets.GCP_SA_KEY }}
   GKE_CLUSTER: time-api-cluster
   GKE_ZONE: us-central1-a
   IMAGE: time-api
