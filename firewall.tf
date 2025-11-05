@@ -1,3 +1,12 @@
+# Note: GKE LoadBalancer services automatically create firewall rules.
+# These custom firewall rules may be redundant but are kept for:
+# - Additional security layers
+# - Future use with other resources
+# - Explicit documentation of allowed traffic
+#
+# GKE nodes don't automatically get target_tags, so these rules apply to
+# resources that explicitly use these tags, not to GKE nodes directly.
+
 resource "google_compute_firewall" "allow_http" {
   name    = "allow-http"
   network = data.google_compute_network.existing_network.self_link

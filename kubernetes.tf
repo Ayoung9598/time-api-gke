@@ -36,6 +36,39 @@ resource "kubernetes_deployment" "time_api" {
           port {
             container_port = 8080
           }
+
+          resources {
+            limits = {
+              cpu    = "0.5"
+              memory = "512Mi"
+            }
+            requests = {
+              cpu    = "250m"
+              memory = "256Mi"
+            }
+          }
+
+          liveness_probe {
+            http_get {
+              path = "/time"
+              port = 8080
+            }
+            initial_delay_seconds = 30
+            period_seconds        = 10
+            timeout_seconds       = 5
+            failure_threshold     = 3
+          }
+
+          readiness_probe {
+            http_get {
+              path = "/time"
+              port = 8080
+            }
+            initial_delay_seconds = 10
+            period_seconds        = 5
+            timeout_seconds       = 3
+            failure_threshold     = 3
+          }
         }
       }
     }

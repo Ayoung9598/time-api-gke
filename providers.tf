@@ -12,19 +12,17 @@ terraform {
 }
 
 provider "google" {
-  project = var.project_id
-  region  = var.region
+  project     = var.project_id
+  region      = var.region
+  credentials = var.credentials_file != "" ? file(var.credentials_file) : null
 }
 
 data "google_client_config" "default" {}
-
-resource "google_container_cluster" "primary" {
-  name     = var.cluster_name
-  location = var.region
-}
 
 provider "kubernetes" {
   host                   = "https://${google_container_cluster.primary.endpoint}"
   token                  = data.google_client_config.default.access_token
   cluster_ca_certificate = base64decode(google_container_cluster.primary.master_auth[0].cluster_ca_certificate)
+  
+  depends_on = [google_container_cluster.primary]
 }

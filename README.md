@@ -88,18 +88,72 @@ curl http://localhost:8080/time
 # Build the Docker image
 docker build -t time-api:latest .
 
-# Run the container locally
+# Run the container locally (uses Gunicorn in production)
 docker run -p 8080:8080 time-api:latest
 
 # Test the containerized API
 curl http://localhost:8080/time
 ```
 
-### 6. Deploy Infrastructure
+**Note**: The Dockerfile uses Gunicorn WSGI server for production (2 workers, 2 threads). For local development with Flask dev server, you can override the CMD:
 
 ```bash
-# Initialize Terraform
-terraform init
+# Run with Flask dev server instead of Gunicorn
+docker run -p 8080:8080 --entrypoint python time-api:latest app.py
+```
+
+Or modify the Dockerfile CMD line to:
+```dockerfile
+CMD ["python", "app.py"]
+```
+
+### 6. Set Up Terraform Backend (Remote State)
+
+The project uses GCS backend for remote state storage. Set it up before deploying:
+
+**Linux/Mac:**
+```bash
+chmod +x setup-backend.sh
+./setup-backend.sh
+```
+
+**Windows:**
+```powershell
+.\setup-backend.ps1
+```
+
+**Manual Setup:**
+
+If you prefer to set up manually:
+
+```bash
+# Set your project ID
+export PROJECT_ID="your-gcp-project-id"
+
+# Create the bucket
+gsutil mb -p $PROJECT_ID -l us-central1 gs://${PROJECT_ID}-terraform-state
+
+# Enable versioning
+gsutil versioning set on gs://${PROJECT_ID}-terraform-state
+
+# Create backend config file
+cat > backend.tfconfig << EOF
+bucket = "${PROJECT_ID}-terraform-state"
+prefix = "time-api-gke/terraform.tfstate"
+EOF
+```
+
+**Benefits of Remote State:**
+- State locking prevents concurrent Terraform runs
+- Team collaboration with shared state
+- Versioning preserves state history
+- Security: state not in git repository
+
+### 7. Deploy Infrastructure
+
+```bash
+# Initialize Terraform with backend
+terraform init -backend-config=backend.tfconfig
 
 # Plan the deployment
 terraform plan -var="project_id=$PROJECT_ID" \
@@ -112,7 +166,12 @@ terraform apply -var="project_id=$PROJECT_ID" \
                 -var="network_name=your-existing-network-name"
 ```
 
-### 7. Access the Deployed API
+**Note:** If you have existing local state, use `-migrate-state` flag:
+```bash
+terraform init -backend-config=backend.tfconfig -migrate-state
+```
+
+### 8. Access the Deployed API
 
 After successful deployment, get the external IP:
 
@@ -139,7 +198,12 @@ time-api-gke/
 ├── kubernetes.tf               # Kubernetes resources
 ├── firewall.tf                 # Security rules
 ├── outputs.tf                  # Terraform outputs
+├── backend.tf                  # Active Terraform backend config (GCS)
+├── setup-backend.sh            # Backend setup script (Linux/Mac)
+├── setup-backend.ps1          # Backend setup script (Windows)
+├── terraform.tfvars.example     # Example Terraform variables
 ├── terraform-sa-key.json       # Service account key (not in git)
+├── .gitignore                  # Git ignore rules
 └── README.md                   # This file
 ```
 
@@ -228,9 +292,29 @@ resources {
 ### Common Issues
 
 1. **403 Errors**: Check service account permissions
+   ```bash
+   gcloud projects get-iam-policy $PROJECT_ID
+   ```
+
 2. **Connection Refused**: Ensure GKE cluster is running and accessible
+   ```bash
+   gcloud container clusters get-credentials time-api-cluster --zone=us-central1-a
+   ```
+
 3. **Image Pull Errors**: Verify image exists in Container Registry
+   ```bash
+   gcloud container images list --repository=gcr.io/$PROJECT_ID
+   ```
+
 4. **Load Balancer Timeout**: Check firewall rules and health checks
+   ```bash
+   kubectl describe service time-api -n time-api
+   ```
+
+5. **Backend Configuration Issues**: 
+   - Ensure GCS bucket exists: `gsutil ls gs://${PROJECT_ID}-terraform-state`
+   - Check backend config: `cat backend.tfconfig`
+   - Re-initialize: `terraform init -backend-config=backend.tfconfig -reconfigure`
 
 ### Debugging Commands
 
@@ -246,6 +330,12 @@ kubectl get services -n time-api
 
 # Describe deployment for issues
 kubectl describe deployment time-api -n time-api
+
+# Check pod status
+kubectl get pods -n time-api
+
+# View pod events
+kubectl describe pod <pod-name> -n time-api
 ```
 
 ## Monitoring and Observability
@@ -276,11 +366,14 @@ This configuration is designed for development/testing with cost optimization in
 
 ## Security Best Practices
 
-- Service accounts with minimal required permissions
-- Private cluster configuration with authorized networks
-- Network policies for pod communication control
-- Regular security updates through automated deployments
-- Secrets management through GitHub repository secrets
+- **Service Accounts**: Minimal required permissions (roles/editor for Terraform)
+- **Private Cluster**: Private GKE nodes with NAT gateway for outbound access
+- **Container Security**: Non-root user in Docker containers
+- **Resource Limits**: CPU and memory limits defined for all pods
+- **Health Checks**: Liveness and readiness probes configured
+- **Network Security**: Firewall rules restricting access to necessary ports
+- **Secrets Management**: GitHub repository secrets for sensitive data
+- **State Security**: Remote state in GCS (not in git), versioning enabled
 
 ## Contributing
 

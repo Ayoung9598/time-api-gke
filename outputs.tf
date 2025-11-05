@@ -9,6 +9,6 @@ output "kubernetes_cluster_host" {
 }
 
 output "load_balancer_ip" {
-  value       = kubernetes_service.time_api.status[0].load_balancer[0].ingress[0].ip
-  description = "Load Balancer IP"
+  value       = try(kubernetes_service.time_api.status[0].load_balancer[0].ingress[0].ip, "Not yet assigned")
+  description = "Load Balancer IP (may show 'Not yet assigned' if IP is still being provisioned)"
 }
