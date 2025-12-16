@@ -549,6 +549,3 @@ For questions, feedback, or collaboration opportunities:
 
 ---
 
-**Live API Endpoint**: [Your deployed API URL will appear here after deployment]
-
-**GitHub Actions Status**: [![Deploy to GKE](https://github.com/your-username/time-api-gke/workflows/Deploy%20to%20GKE/badge.svg)](https://github.com/your-username/time-api-gke/actions)
