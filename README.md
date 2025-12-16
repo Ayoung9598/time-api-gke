@@ -15,6 +15,132 @@ The Time API is a simple Flask application that returns the current UTC time in 
 - **CI/CD**: GitHub Actions for automated deployment
 - **Security**: Service account with least privilege access, firewall rules
 
+## Architecture Diagrams
+
+### Overall System Architecture
+
+```mermaid
+graph TB
+    subgraph "Development"
+        Dev[Developer] -->|git push| GH[GitHub Repository]
+    end
+    
+    subgraph "CI/CD Pipeline"
+        GH -->|trigger| GHA[GitHub Actions]
+        GHA -->|build| Docker[Docker Build]
+        Docker -->|push| GCR[Google Container Registry]
+    end
+    
+    subgraph "Infrastructure as Code"
+        GHA -->|terraform apply| TF[Terraform]
+        TF -->|provision| GCP[Google Cloud Platform]
+    end
+    
+    subgraph "Google Cloud Platform"
+        GCP --> VPC[VPC Network]
+        VPC --> Subnet[Custom Subnet]
+        VPC --> NAT[Cloud NAT]
+        VPC --> FW[Firewall Rules]
+        
+        GCP --> GKE[GKE Cluster]
+        GKE --> NP[Node Pool<br/>e2-medium nodes]
+        NP --> Pods[Time API Pods<br/>Flask Application]
+        
+        Pods --> Svc[LoadBalancer Service]
+        Svc --> LB[External Load Balancer]
+    end
+    
+    subgraph "External Access"
+        LB -->|HTTP| Client[API Clients]
+        Client -->|GET /time| LB
+    end
+    
+    GCR -.->|pull image| Pods
+    
+    style Dev fill:#e1f5ff
+    style GHA fill:#2088ff
+    style TF fill:#7b42bc
+    style GKE fill:#4285f4
+    style Pods fill:#34a853
+    style LB fill:#fbbc04
+    style Client fill:#ea4335
+```
+
+### CI/CD Pipeline Flow
+
+```mermaid
+sequenceDiagram
+    participant Dev as Developer
+    participant GH as GitHub
+    participant GHA as GitHub Actions
+    participant Docker as Docker Build
+    participant GCR as Container Registry
+    participant TF as Terraform
+    participant GKE as GKE Cluster
+    participant API as Time API
+    
+    Dev->>GH: git push to main
+    GH->>GHA: Trigger workflow
+    GHA->>GHA: Checkout code
+    GHA->>Docker: Build image
+    Docker->>GCR: Push image
+    GHA->>TF: terraform init
+    GHA->>TF: terraform plan
+    GHA->>TF: terraform apply
+    TF->>GKE: Create/Update infrastructure
+    GKE->>GCR: Pull latest image
+    GKE->>API: Deploy pods
+    GHA->>API: Health check
+    API-->>GHA: ✓ Deployment successful
+```
+
+### Infrastructure Components
+
+```mermaid
+graph LR
+    subgraph "Networking Layer"
+        VPC[Existing VPC<br/>10.0.0.0/16]
+        Subnet[Custom Subnet<br/>10.0.1.0/24]
+        NAT[Cloud NAT Gateway]
+        Router[Cloud Router]
+        FW[Firewall Rules<br/>HTTP: 80, 8080<br/>Health checks]
+    end
+    
+    subgraph "Compute Layer"
+        GKE[GKE Cluster<br/>Private nodes]
+        NP[Node Pool<br/>1 node<br/>preemptible]
+        Pods[Replicas: 3<br/>Flask + Gunicorn]
+    end
+    
+    subgraph "Service Layer"
+        K8sSvc[Kubernetes Service<br/>Type: LoadBalancer]
+        LB[Google Cloud<br/>Load Balancer]
+    end
+    
+    subgraph "Storage"
+        GCS[GCS Bucket<br/>Terraform State]
+        GCR[Container Registry<br/>Docker Images]
+    end
+    
+    VPC --> Subnet
+    Subnet --> Router
+    Router --> NAT
+    Subnet --> GKE
+    GKE --> NP
+    NP --> Pods
+    Pods --> K8sSvc
+    K8sSvc --> LB
+    
+    GCS -.->|state storage| GKE
+    GCR -.->|image pull| Pods
+    
+    style VPC fill:#e8f0fe
+    style GKE fill:#4285f4
+    style Pods fill:#34a853
+    style LB fill:#fbbc04
+    style GCS fill:#ea4335
+```
+
 ## Prerequisites
 
 Before you begin, ensure you have the following:
@@ -413,6 +539,13 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 - Kubernetes community for orchestration platform
 - Terraform by HashiCorp for infrastructure as code
 - GitHub Actions for CI/CD capabilities
+
+## Contact
+
+For questions, feedback, or collaboration opportunities:
+
+- **Email**: abiolateslim1@gmail.com
+- **LinkedIn**: [Ayomide Abiola](https://linkedin.com/in/ayomide-abiola-77381a262)
 
 ---
 
